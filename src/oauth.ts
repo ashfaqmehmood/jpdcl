@@ -380,17 +380,21 @@ function authorizationForm(transactionId: string, transaction: AuthorizationTran
   const body = `
     <header><span class="mark">⚡</span><div><h1>Link your JPDCL account</h1><p>Connect to ${escapeHtml(transaction.clientName)} with read-only access.</p></div></header>
     ${notice}
-    <form method="post" action="/oauth/authorize">
+    <form method="post" action="/oauth/authorize" data-link-form>
       <input type="hidden" name="transaction_id" value="${escapeHtml(transactionId)}">
       <label>JPDCL mobile number or email<input name="login_id" autocomplete="username" required></label>
       <label>JPDCL password<input name="password" type="password" autocomplete="current-password" required></label>
       <label class="consent"><input type="checkbox" name="consent" value="approved" required><span>Allow read-only access to my JPDCL account, bills, payments, consumption, and smart-meter records.</span></label>
-      <button type="submit">Link account securely</button>
+      <button type="submit" data-submit-button>
+        <span class="button-idle">Link account securely</span>
+        <span class="button-busy" aria-hidden="true"><svg class="submit-check" viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="10"></circle><path d="M6.8 12.4l3.3 3.3 7.2-7.2"></path></svg><span>Linking account…</span></span>
+      </button>
     </form>
     <p class="fine">Your password is sent over HTTPS directly to this independent connector, encrypted at rest, and never placed in an MCP tool call or shown to the AI. This project is not affiliated with JPDCL.</p>
     <nav><a href="/privacy" target="_blank" rel="noreferrer">Privacy</a><a href="/terms" target="_blank" rel="noreferrer">Terms</a><a href="/support" target="_blank" rel="noreferrer">Support</a></nav>`;
   return htmlPage("Link JPDCL account", body, error ? 401 : 200, {
     formActionOrigin: new URL(transaction.redirectUri).origin,
+    enhanceSubmit: true,
   });
 }
 
@@ -431,20 +435,25 @@ function htmlPage(
   title: string,
   body: string,
   status = 200,
-  options: { formActionOrigin?: string } = {},
+  options: { formActionOrigin?: string; enhanceSubmit?: boolean } = {},
 ): Response {
   const formAction = options.formActionOrigin
     ? `'self' ${cspOrigin(options.formActionOrigin)}`
     : "'self'";
+  const scriptNonce = options.enhanceSubmit ? randomValue(18) : undefined;
+  const submitScript = scriptNonce
+    ? `<script nonce="${scriptNonce}">const form=document.querySelector("[data-link-form]");form?.addEventListener("submit",event=>{if(form.dataset.submitting==="true")return;event.preventDefault();const button=form.querySelector("[data-submit-button]");if(!(button instanceof HTMLButtonElement))return;form.dataset.submitting="true";button.disabled=true;button.classList.add("is-submitting");button.setAttribute("aria-busy","true");button.setAttribute("aria-label","Linking account securely. Please wait.");window.setTimeout(()=>form.requestSubmit(),650);});</script>`
+    : "";
+  const scriptPolicy = scriptNonce ? `script-src 'nonce-${scriptNonce}'; ` : "";
   const document = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>
-    :root{color-scheme:light dark;font-family:ui-sans-serif,system-ui,-apple-system,sans-serif;background:#f4f1e8;color:#18201f}body{margin:0;padding:48px 20px}.card{max-width:620px;margin:auto;background:#fff;border:1px solid #d9d5ca;border-radius:24px;padding:32px;box-shadow:0 18px 50px #18201f18}header{display:flex;gap:16px;align-items:center;margin-bottom:26px}.mark{display:grid;place-items:center;width:54px;height:54px;border-radius:16px;background:#f6c84c;font-size:28px}h1{font-size:28px;margin:0 0 6px}h2{font-size:18px;margin-top:28px}p{line-height:1.55}header p,.fine{color:#56615f;margin:0}.fine{font-size:13px;margin-top:18px}label{display:grid;gap:8px;font-weight:650;margin:18px 0}input{font:inherit;padding:13px 14px;border:1px solid #b8bfbc;border-radius:12px;background:#fff;color:#18201f}.consent{grid-template-columns:20px 1fr;align-items:start;font-weight:450;line-height:1.4}.consent input{margin-top:3px}button{width:100%;border:0;border-radius:12px;padding:14px;background:#146c5c;color:#fff;font:inherit;font-weight:750;cursor:pointer}.error{border:1px solid #d77;background:#fff0f0;color:#8a1f1f;border-radius:12px;padding:12px 14px;margin:16px 0}nav{display:flex;gap:16px;flex-wrap:wrap;margin-top:22px}a{color:#126758}code{overflow-wrap:anywhere}@media(prefers-color-scheme:dark){:root{background:#111817;color:#edf3f1}.card{background:#1b2422;border-color:#35413e}input{background:#111817;color:#edf3f1;border-color:#596763}header p,.fine{color:#abb8b4}.error{background:#3b2020;color:#ffc9c9;border-color:#8b4646}a{color:#7ed6c5}}
-  </style></head><body><main class="card">${body}</main></body></html>`;
+    :root{color-scheme:light dark;font-family:ui-sans-serif,system-ui,-apple-system,sans-serif;background:#f4f1e8;color:#18201f}body{margin:0;padding:48px 20px}.card{max-width:620px;margin:auto;background:#fff;border:1px solid #d9d5ca;border-radius:24px;padding:32px;box-shadow:0 18px 50px #18201f18}header{display:flex;gap:16px;align-items:center;margin-bottom:26px}.mark{display:grid;place-items:center;width:54px;height:54px;border-radius:16px;background:#f6c84c;font-size:28px}h1{font-size:28px;margin:0 0 6px}h2{font-size:18px;margin-top:28px}p{line-height:1.55}header p,.fine{color:#56615f;margin:0}.fine{font-size:13px;margin-top:18px}label{display:grid;gap:8px;font-weight:650;margin:18px 0}input{font:inherit;padding:13px 14px;border:1px solid #b8bfbc;border-radius:12px;background:#fff;color:#18201f}.consent{grid-template-columns:20px 1fr;align-items:start;font-weight:450;line-height:1.4}.consent input{margin-top:3px}button{width:100%;min-height:49px;border:0;border-radius:12px;padding:14px;background:#146c5c;color:#fff;font:inherit;font-weight:750;cursor:pointer;transition:background .2s ease,transform .2s ease}button:disabled{background:#0f5b4e;cursor:wait}.button-busy{display:none;align-items:center;justify-content:center;gap:10px}button.is-submitting .button-idle{display:none}button.is-submitting .button-busy{display:inline-flex}.submit-check{width:22px;height:22px;overflow:visible;animation:check-pop .42s ease-out both}.submit-check circle{fill:#fff;opacity:.18}.submit-check path{fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:18;stroke-dashoffset:18;animation:check-draw .48s .08s ease-out forwards}@keyframes check-pop{0%{transform:scale(.45);opacity:0}70%{transform:scale(1.14);opacity:1}100%{transform:scale(1);opacity:1}}@keyframes check-draw{to{stroke-dashoffset:0}}.error{border:1px solid #d77;background:#fff0f0;color:#8a1f1f;border-radius:12px;padding:12px 14px;margin:16px 0}nav{display:flex;gap:16px;flex-wrap:wrap;margin-top:22px}a{color:#126758}code{overflow-wrap:anywhere}@media(prefers-reduced-motion:reduce){button{transition:none}.submit-check{animation:none}.submit-check path{animation:none;stroke-dashoffset:0}}@media(prefers-color-scheme:dark){:root{background:#111817;color:#edf3f1}.card{background:#1b2422;border-color:#35413e}input{background:#111817;color:#edf3f1;border-color:#596763}header p,.fine{color:#abb8b4}.error{background:#3b2020;color:#ffc9c9;border-color:#8b4646}a{color:#7ed6c5}}
+  </style></head><body><main class="card">${body}</main>${submitScript}</body></html>`;
   return new Response(document, {
     status,
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "no-store",
-      "content-security-policy": `default-src 'none'; style-src 'unsafe-inline'; form-action ${formAction}; base-uri 'none'; frame-ancestors 'none'`,
+      "content-security-policy": `default-src 'none'; style-src 'unsafe-inline'; ${scriptPolicy}form-action ${formAction}; base-uri 'none'; frame-ancestors 'none'`,
       "referrer-policy": "no-referrer",
       "x-content-type-options": "nosniff",
       "x-frame-options": "DENY",

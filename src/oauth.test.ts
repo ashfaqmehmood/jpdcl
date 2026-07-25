@@ -47,8 +47,17 @@ describe("OAuth account linking", () => {
     const linkPage = await route(new Request(authorize), store);
     const page = await linkPage.text();
     assert.equal(linkPage.status, 200);
-    assert.match(linkPage.headers.get("content-security-policy") ?? "", /form-action 'self' https:\/\/chatgpt\.com(?:;|\s)/);
+    const contentSecurityPolicy = linkPage.headers.get("content-security-policy") ?? "";
+    assert.match(contentSecurityPolicy, /form-action 'self' https:\/\/chatgpt\.com(?:;|\s)/);
+    assert.match(contentSecurityPolicy, /script-src 'nonce-[A-Za-z0-9_-]+'/);
+    assert.doesNotMatch(contentSecurityPolicy, /script-src 'unsafe-inline'/);
     assert.doesNotMatch(page, /x-jpdcl-password/i);
+    assert.match(page, /data-link-form/);
+    assert.match(page, /class="button-busy"/);
+    assert.match(page, /Linking account…/);
+    assert.match(page, /classList\.add\("is-submitting"\)/);
+    assert.match(page, /event\.preventDefault\(\)/);
+    assert.match(page, /form\.requestSubmit\(\)/);
     const transactionId = /name="transaction_id" value="([^"]+)"/.exec(page)?.[1];
     assert.ok(transactionId);
 
