@@ -29,7 +29,7 @@ jobs:
       - run: bun pm pack --dry-run
 
   deploy-azure:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'ashfaqmehmood/jpdcl'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'ashfaqmehmood/jpdcl' && github.actor == 'ashfaqmehmood'
     needs: verify
     runs-on: ubuntu-latest
     environment: production
@@ -73,3 +73,58 @@ jobs:
             sleep 10
           done
           exit 1
+
+  publish-npm:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'ashfaqmehmood/jpdcl' && github.actor == 'ashfaqmehmood'
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: jpdcl-npm-release
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - name: Publish the next patch through npm trusted publishing
+        run: |
+          npm install --global npm@latest
+          npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-smithery:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'ashfaqmehmood/jpdcl' && github.actor == 'ashfaqmehmood'
+    needs: [verify, deploy-azure]
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: jpdcl-smithery-publish
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    steps:
+      - name: Refresh the canonical Smithery listing
+        run: |
+          echo "::add-mask::$SMITHERY_API_KEY"
+          curl --fail-with-body --silent --show-error \
+            --request PATCH \
+            --header "Authorization: Bearer $SMITHERY_API_KEY" \
+            --header "Content-Type: application/json" \
+            --data '{"displayName":"JPDCL Smart Meter","description":"Unofficial read-only JPDCL account and smart-meter MCP with OAuth linking and 24 hosted tools.","homepage":"https://jpdcl.gododo.in","repositoryUrl":"https://github.com/ashfaqmehmood/jpdcl","license":"MIT","unlisted":false}' \
+            'https://api.smithery.ai/servers/ass%2Fjpdcl'
+          npx --yes smithery@latest mcp publish https://jpdcl.gododo.in/mcp --name ass/jpdcl
+        env:
+          SMITHERY_API_KEY: ${{ secrets.SMITHERY_API_KEY }}

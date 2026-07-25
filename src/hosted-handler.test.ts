@@ -37,4 +37,24 @@ describe("hosted reverse-proxy protection", () => {
     );
     assert.equal(response.status, 200);
   });
+
+  it("publishes a static OAuth server card with the complete hosted tool catalog", async () => {
+    const response = await handleHostedRequest(
+      new Request("https://jpdcl.azurewebsites.net/.well-known/mcp/server-card.json", {
+        headers: { "x-jpdcl-proxy-secret": options.proxySecret },
+      }),
+      new MemoryOAuthStore(),
+      { ...options, includeSmartTools: true },
+    );
+    assert.equal(response.status, 200);
+
+    const card = await response.json() as {
+      authentication: { required: boolean; schemes: string[] };
+      tools: Array<{ name: string }>;
+    };
+    assert.deepEqual(card.authentication, { required: true, schemes: ["oauth2"] });
+    assert.equal(card.tools.length, 24);
+    assert.equal(card.tools.some(({ name }) => name === "jpdcl_smart_billing"), false);
+    assert.equal(card.tools.some(({ name }) => name === "jpdcl_smart_nearby_offices"), false);
+  });
 });

@@ -18,11 +18,11 @@ The only public hosted URL is `https://jpdcl.gododo.in/mcp`; the Cloudflare `wor
 
 ## Use through Smithery
 
-[Smithery](https://smithery.ai/docs/concepts/cli) users can connect directly to the OAuth-enabled hosted endpoint:
+[Smithery](https://smithery.ai/server/ass/jpdcl) users can install the published OAuth-enabled server directly:
 
 ```sh
 npx -y smithery@latest auth login
-npx -y smithery@latest mcp add https://jpdcl.gododo.in/mcp --id jpdcl
+npx -y smithery@latest mcp add ass/jpdcl --id jpdcl
 ```
 
 This uses the same account-linking flow and does not put JPDCL credentials in Smithery configuration.

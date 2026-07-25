@@ -1,6 +1,7 @@
 import { handleMcpRequest, mcpPreflightResponse } from "./http-handler.js";
 import { authenticateMcpRequest, handleOAuthRequest, unauthorizedMcpResponse } from "./oauth.js";
 import type { OAuthStore } from "./oauth-store.js";
+import { createJpdclPublicServerCard } from "./public-mcp.js";
 import { JpdclRuntime } from "./runtime.js";
 
 export interface HostedHandlerOptions {
@@ -27,6 +28,13 @@ export async function handleHostedRequest(
 
   const externalRequest = options.publicOrigin ? replaceOrigin(request, options.publicOrigin) : request;
   const url = new URL(externalRequest.url);
+
+  if (url.pathname === "/.well-known/mcp/server-card.json" && externalRequest.method === "GET") {
+    return Response.json(await createJpdclPublicServerCard({ includeSmartTools: options.includeSmartTools }), {
+      headers: { "cache-control": "public, max-age=300" },
+    });
+  }
+
   const oauthResponse = await handleOAuthRequest(externalRequest, store, {
     encryptionKey: options.encryptionKey,
     appsChallenge: options.appsChallenge,

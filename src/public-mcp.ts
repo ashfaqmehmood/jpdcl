@@ -1,3 +1,5 @@
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { endpointCatalog, isEndpointName, listEndpoints } from "./catalog.js";
@@ -11,13 +13,37 @@ const PUBLIC_INSTRUCTIONS = `Read-only, independent JPDCL account access. Use jp
 const OUTPUT_SCHEMA = { result: z.unknown() };
 const READ_EXTERNAL = { readOnlyHint: true, destructiveHint: false, openWorldHint: true } as const;
 const READ_LOCAL = { readOnlyHint: true, destructiveHint: false, openWorldHint: false } as const;
+const PUBLIC_SERVER_INFO = { name: "JPDCL Smart Meter (Unofficial)", version: "1.0.0" } as const;
+
+export async function createJpdclPublicServerCard(
+  options: { includeSmartTools?: boolean } = {},
+): Promise<Record<string, unknown>> {
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const server = createJpdclPublicMcpServer({} as JpdclRuntime, options);
+  const client = new Client({ name: "jpdcl-server-card", version: PUBLIC_SERVER_INFO.version });
+
+  await server.connect(serverTransport);
+  await client.connect(clientTransport);
+  try {
+    const { tools } = await client.listTools();
+    return {
+      serverInfo: PUBLIC_SERVER_INFO,
+      authentication: { required: true, schemes: ["oauth2"] },
+      tools,
+      resources: [],
+      prompts: [],
+    };
+  } finally {
+    await client.close();
+  }
+}
 
 export function createJpdclPublicMcpServer(
   runtime: JpdclRuntime,
   options: { includeSmartTools?: boolean } = {},
 ): McpServer {
   const server = new McpServer(
-    { name: "JPDCL Smart Meter (Unofficial)", version: "1.0.0" },
+    PUBLIC_SERVER_INFO,
     {
       instructions: options.includeSmartTools
         ? `${PUBLIC_INSTRUCTIONS} Use jpdcl_snapshot for a combined billing and smart-meter overview, and jpdcl_meter_health for supply, voltage, outage, alarm, and freshness questions.`
