@@ -12,9 +12,9 @@ Add this URL to any MCP client that supports Streamable HTTP and OAuth:
 https://jpdcl.gododo.in/mcp
 ```
 
-No API key, password flag, custom header, or environment variable is needed. Your MCP client opens the account-linking page, where you sign in to JPDCL directly. The hosted service exposes 10 read-only tools, including the combined smart-meter snapshot and meter-health tools, and does not advertise payment or account-changing actions.
+No API key, password flag, custom header, or environment variable is needed. Your MCP client opens the account-linking page, where you sign in to JPDCL directly. The hosted service exposes all 26 read-only tools through the verified Azure/WARP path, including account records, the complete smart-meter dashboard, intervals, technical profile, reports, billing, alerts, preferences, support, notifications, forecasts, and a guarded catalog reader. It does not expose login, payment initiation, complaint creation, preference changes, or any other account-changing action.
 
-The billing-only Cloudflare fallback remains available at `https://jpdcl.ashfaq.workers.dev/mcp`. It intentionally omits `jpdcl_snapshot` and `jpdcl_meter_health` because Genus rejects the smart-meter account switch from that shared egress.
+The only public hosted URL is `https://jpdcl.gododo.in/mcp`; the Cloudflare `workers.dev` and preview hostnames are disabled.
 
 ## Use through Smithery
 

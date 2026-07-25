@@ -27,7 +27,7 @@ async function challenge(verifier: string): Promise<string> {
   return Buffer.from(digest).toString("base64url");
 }
 
-const origin = (process.env.JPDCL_HOSTED_ORIGIN ?? "https://jpdcl.ashfaq.workers.dev").replace(/\/$/, "");
+const origin = (process.env.JPDCL_HOSTED_ORIGIN ?? "https://jpdcl.gododo.in").replace(/\/$/, "");
 const transportOrigin = (process.env.JPDCL_HOSTED_TRANSPORT_ORIGIN ?? origin).replace(/\/$/, "");
 const proxySecret = process.env.JPDCL_PROXY_SECRET?.trim();
 const loginId = process.env.JPDCL_LOGIN_ID || await input({ message: "JPDCL mobile/email:" });
@@ -102,6 +102,8 @@ try {
   await client.connect(transport);
   const tools = await client.listTools();
   const expectedTools = new Map<string, UnknownRecord>([
+    ["jpdcl_catalog", {}],
+    ["jpdcl_guide", {}],
     ["jpdcl_energy_ledger", { limit: 35 }],
     ["jpdcl_tariff_estimate", {}],
     ["jpdcl_tariff_schedule", {}],
@@ -116,8 +118,20 @@ try {
     const recent = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
     expectedTools.set("jpdcl_snapshot", {});
     expectedTools.set("jpdcl_meter_health", {});
+    expectedTools.set("jpdcl_smart_session", {});
+    expectedTools.set("jpdcl_smart_dashboard", { includeDerived: false });
     expectedTools.set("jpdcl_smart_consumption", { type: "monthly", value: 2 });
+    expectedTools.set("jpdcl_smart_intervals", { from: recent, to: today, sortOrder: "date" });
+    expectedTools.set("jpdcl_smart_meter_profile", {});
+    expectedTools.set("jpdcl_smart_forecasts", {});
+    expectedTools.set("jpdcl_smart_billing", {});
+    expectedTools.set("jpdcl_smart_alerts", {});
+    expectedTools.set("jpdcl_smart_preferences", {});
+    expectedTools.set("jpdcl_smart_support", { pageNumber: 1, pageSize: 5 });
+    expectedTools.set("jpdcl_smart_notifications", {});
+    expectedTools.set("jpdcl_smart_nearby_offices", { latitude: 32.7266, longitude: 74.857, query: "JPDCL" });
     expectedTools.set("jpdcl_smart_report", { report: "voltage", from: recent, to: today, end: 5 });
+    expectedTools.set("jpdcl_read", { endpoint: "smart_preferences", params: { isPrepaid: false } });
   }
   const discoveredNames = new Set(tools.tools.map((tool) => tool.name));
   const toolResponses = new Map<string, Awaited<ReturnType<Client["callTool"]>>>();

@@ -21,13 +21,13 @@ try {
   await client.connect(transport);
   const tools = await client.listTools();
   const names = tools.tools.map((tool) => tool.name);
-  const forbidden = ["jpdcl_auth_login", "jpdcl_mutate", "jpdcl_read", "jpdcl_catalog"]
+  const forbidden = ["jpdcl_auth_login", "jpdcl_mutate", "jpdcl_read"]
     .filter((name) => names.includes(name));
   const incomplete = tools.tools.filter((tool) =>
     !tool.title || !tool.description || !tool.outputSchema
     || tool.annotations?.readOnlyHint !== true
     || tool.annotations?.destructiveHint !== false);
-  if (client.getServerVersion()?.name !== "JPDCL Smart Meter (Unofficial)" || tools.tools.length !== 8) {
+  if (client.getServerVersion()?.name !== "JPDCL Smart Meter (Unofficial)" || tools.tools.length !== 10) {
     throw new Error("HTTP endpoint returned unexpected MCP metadata");
   }
   if (forbidden.length || incomplete.length) {
