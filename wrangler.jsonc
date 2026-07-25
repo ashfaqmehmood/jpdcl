@@ -1,0 +1,35 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "jpdcl",
+  "main": "src/worker.ts",
+  "workers_dev": true,
+  "preview_urls": true,
+  "routes": [
+    {
+      "pattern": "jpdcl.gododo.in",
+      "custom_domain": true
+    }
+  ],
+  "compatibility_date": "2026-07-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "placement": {
+    "mode": "smart"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "OAUTH_STATE",
+        "class_name": "OAuthState"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["OAuthState"]
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

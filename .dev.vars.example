@@ -1,0 +1,6 @@
+# Cloudflare Worker development only. Copy to .dev.vars; never commit the real value.
+# Generate with: bun run oauth:secret
+OAUTH_ENCRYPTION_KEY=
+
+# Set only while completing OpenAI domain verification.
+OPENAI_APPS_CHALLENGE=

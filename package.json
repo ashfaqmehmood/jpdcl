@@ -1,0 +1,95 @@
+{
+  "name": "jpdcl",
+  "version": "1.0.0",
+  "description": "Unofficial Jammu Power Distribution Corporation Limited (JPDCL) smart-meter MCP, CLI, REST API, and TypeScript client",
+  "license": "MIT",
+  "packageManager": "bun@1.3.14",
+  "keywords": [
+    "jpdcl",
+    "jammu-power-distribution",
+    "jammu-kashmir",
+    "jk-electricity",
+    "electricity",
+    "smart-meter",
+    "mcp",
+    "model-context-protocol",
+    "cli",
+    "api"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://github.com/ashfaqmehmood/jpdcl#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ashfaqmehmood/jpdcl.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ashfaqmehmood/jpdcl/issues"
+  },
+  "overrides": {
+    "@hono/node-server": "$@hono/node-server"
+  },
+  "type": "module",
+  "bin": {
+    "jpdcl": "dist/launcher.js",
+    "jpdcl-mcp": "dist/mcp-stdio.js",
+    "jpdcl-api": "dist/server.js"
+  },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "src",
+    "scripts",
+    "tsconfig.json",
+    "tsconfig.build.json",
+    "README.md",
+    "SECURITY.md",
+    "openapi.yaml",
+    ".env.example"
+  ],
+  "scripts": {
+    "start": "node dist/hosted-server.js",
+    "build": "bun scripts/build.mjs",
+    "oauth:secret": "bun scripts/generate-oauth-secret.mjs",
+    "dev:cli": "bun src/cli.ts",
+    "dev:api": "bun src/server.ts",
+    "dev:mcp": "bun src/mcp.ts",
+    "dev": "bun src/launcher.ts",
+    "typecheck": "bun node_modules/typescript/bin/tsc --noEmit",
+    "test": "bun test src/*.test.ts",
+    "audit:smart": "bun scripts/audit-smart-portal.mjs",
+    "audit:smart-auth": "bun scripts/audit-smart-auth.ts",
+    "audit:ledger": "bun scripts/audit-ledger-portal.ts",
+    "audit:launcher": "bun run build && bun scripts/audit-launcher.mjs",
+    "audit:http": "bun scripts/audit-http.ts",
+    "audit:hosted-oauth": "bun scripts/audit-hosted-oauth.ts",
+    "audit:mcp": "bun run build && bun scripts/audit-mcp.mjs"
+  },
+  "engines": {
+    "node": ">=22.12",
+    "bun": ">=1.3"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.11",
+    "@inquirer/prompts": "^8.5.2",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "cheerio": "^1.2.0",
+    "commander": "^15.0.0",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^17.4.2",
+    "fetch-cookie": "^3.2.0",
+    "hono": "^4.12.32",
+    "tough-cookie": "^6.0.2",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/crypto-js": "^4.2.2",
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.114.0"
+  }
+}

@@ -1,0 +1,284 @@
+openapi: 3.1.0
+info:
+  title: JPDCL API-only Toolkit
+  version: 1.0.0
+  description: Local, normalized REST facade over JPDCL billing, Genus smart-meter, and daily import/export ledger APIs.
+servers:
+  - url: http://127.0.0.1:8787
+components:
+  securitySchemes:
+    LocalApiKey:
+      type: http
+      scheme: bearer
+      description: Optional local key configured with JPDCL_API_KEY.
+  schemas:
+    PortalResponse:
+      type: object
+      additionalProperties: true
+    RawRequest:
+      type: object
+      properties:
+        params: { type: object, additionalProperties: true }
+        body: { type: object, additionalProperties: true }
+        confirm: { type: boolean, default: false, description: Required for a cataloged account-changing endpoint in addition to JPDCL_ENABLE_MUTATIONS=true }
+    TariffEstimate:
+      type: object
+      additionalProperties: true
+      description: Deterministic domestic charge estimate with rate, slab, provenance, and exclusion details.
+    EnergyLedger:
+      type: object
+      additionalProperties: true
+      description: Normalized cumulative daily registers, deterministic deltas, freshness, and provisional net-meter billing quantity.
+    MeterHealth:
+      type: object
+      additionalProperties: true
+      description: Unified supply, meter-reading, voltage, outage, ledger-freshness, and alarm evidence.
+paths:
+  /health:
+    get:
+      summary: Service health
+      responses:
+        "200": { description: Healthy }
+  /v1/catalog:
+    get:
+      summary: Complete discovered endpoint catalog
+      parameters:
+        - { name: portal, in: query, schema: { type: string, enum: [main, smart, ledger] } }
+      responses:
+        "200": { description: Endpoint definitions }
+  /v1/tariff:
+    get:
+      summary: Encoded official FY 2025-26 domestic tariff and source pages
+      security: [{ LocalApiKey: [] }]
+      responses:
+        "200": { description: Tariff schedule and general charge terms }
+  /v1/auth/login:
+    post:
+      summary: Create and securely save a main-portal API session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [loginId, password]
+              properties:
+                loginId: { type: string }
+                password: { type: string, format: password }
+      responses:
+        "200": { description: Authenticated }
+  /v1/me:
+    get:
+      summary: Saved session status
+      security: [{ LocalApiKey: [] }]
+      responses:
+        "200": { description: Session metadata }
+  /v1/snapshot:
+    get:
+      summary: Preferred normalized factual snapshot across all three data sources
+      description: Automatically uses or refreshes API sessions, adds deterministic ledger and tariff calculations, and excludes forecasts, recommendations, and smart tips.
+      security: [{ LocalApiKey: [] }]
+      parameters:
+        - { name: accountId, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Provenance-labelled observed-only snapshot }
+  /v1/accounts/{accountId}:
+    get:
+      summary: Consumer, bill, tariff, load, and meter summary
+      security: [{ LocalApiKey: [] }]
+      parameters: [{ name: accountId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Account data }
+  /v1/accounts/{accountId}/digest:
+    get:
+      summary: Combined account, bills, payments, consumption, and linked-account digest
+      security: [{ LocalApiKey: [] }]
+      parameters: [{ name: accountId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Complete digest }
+  /v1/accounts/{accountId}/bills:
+    get:
+      summary: Billing history
+      security: [{ LocalApiKey: [] }]
+      parameters:
+        - { name: accountId, in: path, required: true, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        "200": { description: Bills }
+  /v1/accounts/{accountId}/payments:
+    get:
+      summary: Payment history
+      security: [{ LocalApiKey: [] }]
+      parameters:
+        - { name: accountId, in: path, required: true, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        "200": { description: Payments }
+  /v1/accounts/{accountId}/consumption:
+    get:
+      summary: Main-portal billed consumption
+      security: [{ LocalApiKey: [] }]
+      parameters:
+        - { name: accountId, in: path, required: true, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        "200": { description: Consumption }
+  /v1/accounts/{accountId}/tariff-estimate:
+    get:
+      summary: Automatic domestic electricity charge estimate
+      description: Prefers current-month net-import register differences for net meters, with Genus usage as fallback; detects category, plan and sanctioned load. The result is deterministic but is not a utility bill.
+      security: [{ LocalApiKey: [] }]
+      parameters:
+        - { name: accountId, in: path, required: true, schema: { type: string } }
+        - { name: units, in: query, schema: { type: number, minimum: 0 }, description: Optional kWh override }
+        - { name: load, in: query, schema: { type: number, minimum: 0 }, description: Optional sanctioned-load override }
+        - { name: prepaid, in: query, schema: { type: boolean }, description: Optional plan override }
+        - { name: solarWaterHeaterEligible, in: query, schema: { type: boolean }, description: Apply only when verified by JPDCL }
+        - { name: electricityDuty, in: query, schema: { type: number, minimum: 0 }, description: Explicit duty amount; never inferred }
+        - { name: otherCharges, in: query, schema: { type: number, minimum: 0 } }
+        - { name: unpaidPrincipal, in: query, schema: { type: number, minimum: 0 } }
+        - { name: lateMonths, in: query, schema: { type: number, minimum: 0 } }
+      responses:
+        "200":
+          description: Provenance-labelled tariff estimate
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TariffEstimate" }
+  /v1/accounts/{accountId}/energy-ledger:
+    get:
+      summary: Daily import, export, net-import, and apparent-energy ledger
+      description: Resolves the consumer ID from the authenticated account, then returns normalized registers, daily/period deltas, source freshness, and provisional billable kWh.
+      security: [{ LocalApiKey: [] }]
+      parameters:
+        - { name: accountId, in: path, required: true, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 0, maximum: 500, default: 35 }, description: Daily rows; zero returns only the period summary }
+      responses:
+        "200":
+          description: Provenance-labelled energy ledger
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnergyLedger" }
+  /v1/accounts/{accountId}/meter-health:
+    get:
+      summary: Unified meter, electrical supply, and data-freshness status
+      description: Combines the latest utility status, on-demand readings, voltage profile, power events, daily register freshness, and meter alarms. It does not invent a network-connectivity status the portals do not expose.
+      security: [{ LocalApiKey: [] }]
+      parameters: [{ name: accountId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200":
+          description: Multi-source meter-health evidence
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MeterHealth" }
+  /v1/smart/session:
+    get:
+      summary: Smart-meter session and account metadata
+      security: [{ LocalApiKey: [] }]
+      responses:
+        "200": { description: Smart account metadata }
+  /v1/smart/accounts/{accountId}/dashboard:
+    get:
+      summary: Measured readings and account records; derived content excluded by default
+      security: [{ LocalApiKey: [] }]
+      parameters:
+        - { name: accountId, in: path, required: true, schema: { type: string } }
+        - { name: includeDerived, in: query, schema: { type: boolean, default: false }, description: Opt in to clearly labelled predictions, estimates, insights, and tips }
+      responses:
+        "200": { description: Live usage, reading, bill, alerts, and session }
+  /v1/smart/accounts/{accountId}/meter:
+    get:
+      summary: Meter technical profile and current reading
+      security: [{ LocalApiKey: [] }]
+      parameters: [{ name: accountId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Meter and connection details }
+  /v1/smart/accounts/{accountId}/alerts:
+    get:
+      summary: Live daily and monthly usage alerts
+      security: [{ LocalApiKey: [] }]
+      parameters: [{ name: accountId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Alert state and thresholds }
+  /v1/smart/accounts/{accountId}/preferences:
+    get:
+      summary: Notification categories and delivery-channel preferences
+      security: [{ LocalApiKey: [] }]
+      parameters: [{ name: accountId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Preferences }
+  /v1/smart/accounts/{accountId}/notifications:
+    get:
+      summary: Notifications and unread count
+      security: [{ LocalApiKey: [] }]
+      parameters: [{ name: accountId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Notifications }
+  /v1/smart/accounts/{accountId}/support:
+    get:
+      summary: FAQs, contact details, categories, and complaints
+      security: [{ LocalApiKey: [] }]
+      parameters:
+        - { name: accountId, in: path, required: true, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, default: 20 } }
+        - { name: statusCodes, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Support data }
+  /v1/smart/accounts/{accountId}/consumption:
+    get:
+      summary: Smart-meter consumption comparison
+      security: [{ LocalApiKey: [] }]
+      parameters:
+        - { name: accountId, in: path, required: true, schema: { type: string } }
+        - { name: type, in: query, schema: { type: string, enum: [daily, weekly, monthly], default: monthly } }
+        - { name: value, in: query, schema: { type: integer, default: 12 } }
+      responses:
+        "200": { description: Consumption comparison }
+  /v1/smart/accounts/{accountId}/intervals:
+    get:
+      summary: Half-hour smart-meter readings
+      security: [{ LocalApiKey: [] }]
+      parameters:
+        - { name: accountId, in: path, required: true, schema: { type: string } }
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+        - { name: sort, in: query, schema: { type: string, default: date } }
+      responses:
+        "200": { description: Interval readings }
+  /v1/smart/accounts/{accountId}/reports/{reportType}:
+    get:
+      summary: Smart-meter analytical report
+      security: [{ LocalApiKey: [] }]
+      parameters:
+        - { name: accountId, in: path, required: true, schema: { type: string } }
+        - { name: reportType, in: path, required: true, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: start, in: query, schema: { type: integer, default: 1 } }
+        - { name: end, in: query, schema: { type: integer } }
+        - { name: filter, in: query, schema: { type: string } }
+        - { name: format, in: query, schema: { type: string, enum: [xlsx, pdf] } }
+      responses:
+        "200": { description: Report data or base64-encoded download }
+  /v1/raw/{endpoint}:
+    get:
+      summary: Call any cataloged read endpoint with query parameters
+      security: [{ LocalApiKey: [] }]
+      parameters: [{ name: endpoint, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Portal response }
+    post:
+      summary: Call any cataloged endpoint with explicit path parameters and body
+      security: [{ LocalApiKey: [] }]
+      parameters: [{ name: endpoint, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RawRequest" }
+      responses:
+        "200": { description: Portal response }
