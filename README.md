@@ -4,6 +4,8 @@ Unofficial, community-built, and MIT-licensed. This project is not affiliated wi
 
 API-only access to the JPDCL consumer portal, Genus smart-meter portal, and JPDCL daily import/export meter ledger. No browser automation is used at runtime.
 
+Contributions are welcome! :)
+
 ## Use the hosted MCP
 
 Add this URL to any MCP client that supports Streamable HTTP and OAuth:
@@ -14,7 +16,7 @@ https://jpdcl.gododo.in/mcp
 
 No API key, password flag, custom header, or environment variable is needed. Your MCP client opens the account-linking page, where you sign in to JPDCL directly. The hosted service exposes 24 read-only tools through the verified Azure/WARP path, including account records, the complete smart-meter dashboard, intervals, technical profile, reports, alerts, preferences, support, notifications, forecasts, and a guarded catalog reader. It does not expose login, payment initiation, complaint creation, preference changes, or any other account-changing action.
 
-The only public hosted URL is `https://jpdcl.gododo.in/mcp`; the Cloudflare `workers.dev` and preview hostnames are disabled.
+The only public hosted URL is `https://jpdcl.gododo.in/mcp`.
 
 ## Use through Smithery
 
