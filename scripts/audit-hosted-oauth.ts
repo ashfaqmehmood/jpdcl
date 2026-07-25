@@ -124,12 +124,10 @@ try {
     expectedTools.set("jpdcl_smart_intervals", { from: recent, to: today, sortOrder: "date" });
     expectedTools.set("jpdcl_smart_meter_profile", {});
     expectedTools.set("jpdcl_smart_forecasts", {});
-    expectedTools.set("jpdcl_smart_billing", {});
     expectedTools.set("jpdcl_smart_alerts", {});
     expectedTools.set("jpdcl_smart_preferences", {});
     expectedTools.set("jpdcl_smart_support", { pageNumber: 1, pageSize: 5 });
     expectedTools.set("jpdcl_smart_notifications", {});
-    expectedTools.set("jpdcl_smart_nearby_offices", { latitude: 32.7266, longitude: 74.857, query: "JPDCL" });
     expectedTools.set("jpdcl_smart_report", { report: "voltage", from: recent, to: today, end: 5 });
     expectedTools.set("jpdcl_read", { endpoint: "smart_preferences", params: { isPrepaid: false } });
   }

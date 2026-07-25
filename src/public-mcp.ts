@@ -194,33 +194,6 @@ export function createJpdclPublicMcpServer(
       };
     }));
 
-    server.registerTool("jpdcl_smart_billing", {
-      title: "Get smart-meter billing history",
-      description: "Get the correct postpaid bills and payments or prepaid balance, recharges, and bills for the linked plan.",
-      inputSchema: { accountId: z.string().optional().describe("Defaults to the linked account") },
-      outputSchema: OUTPUT_SCHEMA,
-      annotations: READ_EXTERNAL,
-    }, async ({ accountId }) => run(async () => {
-      const client = await runtime.ensureSmart(accountId);
-      if (!client.accountId || !client.meterNumber) throw new JpdclError("Smart account is incomplete", 400);
-      const prepaid = String(client.claims.currentAccountIsMeterPrepaid).toLowerCase() === "true";
-      if (prepaid) {
-        const [balance, rechargeBalance, recharges, bills] = await Promise.all([
-          client.request("smart_prepaid_balance", { params: { meterNumber: client.meterNumber } }),
-          client.request("smart_prepaid_recharge_balance", { params: { accountId: client.accountId } }),
-          client.request("smart_prepaid_recharge_history", { params: { meterNumber: client.meterNumber } }),
-          client.request("smart_prepaid_bill_history", { params: { meterNumber: client.meterNumber } }),
-        ]);
-        return { plan: "prepaid", balance: balance.data, rechargeBalance: rechargeBalance.data, recharges: recharges.data, bills: bills.data };
-      }
-      const [lastBill, bills, payments] = await Promise.all([
-        client.request("smart_postpaid_last_bill", { params: { accountId: client.accountId } }),
-        client.request("smart_postpaid_bill_history", { params: { accountId: client.accountId } }),
-        client.request("smart_postpaid_payment_history", { params: { accountId: client.accountId } }),
-      ]);
-      return { plan: "postpaid", lastBill: lastBill.data, bills: bills.data, payments: payments.data };
-    }));
-
     server.registerTool("jpdcl_smart_alerts", {
       title: "Get smart-meter usage alerts",
       description: "Get live consumption and configured daily and monthly alert thresholds and descriptions.",
@@ -293,31 +266,6 @@ export function createJpdclPublicMcpServer(
         client.request("smart_notification_unread_count", { params: { userId } }).catch(() => ({ status: true, data: { unreadCount: 0 } })),
       ]);
       return { items: items.data, unread: unread.data };
-    }));
-
-    server.registerTool("jpdcl_smart_nearby_offices", {
-      title: "Find nearby JPDCL offices",
-      description: "Find nearby service offices using latitude, longitude, and a search query. Returns a structured unavailable result if the utility service is unavailable.",
-      inputSchema: {
-        latitude: z.number().min(-90).max(90),
-        longitude: z.number().min(-180).max(180),
-        query: z.string().min(1).default("JPDCL"),
-      },
-      outputSchema: OUTPUT_SCHEMA,
-      annotations: READ_EXTERNAL,
-    }, async ({ latitude, longitude, query }) => run(async () => {
-      const client = await runtime.ensureSmart();
-      try {
-        return await client.request("smart_nearby_offices", { params: { lat: latitude, lng: longitude, query: query || "JPDCL" } });
-      } catch (error) {
-        if (!(error instanceof JpdclError)) throw error;
-        return {
-          _meta: { dataClass: "observed-service-status", source: "smart_nearby_offices", available: false, checkedAt: new Date().toISOString() },
-          offices: [],
-          error: { status: error.status, message: error.message },
-          warning: "The JPDCL office service is currently unavailable; no office locations were inferred or fabricated.",
-        };
-      }
     }));
 
     server.registerTool("jpdcl_smart_report", {

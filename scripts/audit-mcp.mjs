@@ -30,12 +30,10 @@ const cases = {
   jpdcl_smart_intervals: { from: recent, to: today },
   jpdcl_smart_meter_profile: {},
   jpdcl_smart_forecasts: {},
-  jpdcl_smart_billing: {},
   jpdcl_smart_alerts: {},
   jpdcl_smart_preferences: {},
   jpdcl_smart_support: { pageSize: 5 },
   jpdcl_smart_notifications: {},
-  jpdcl_smart_nearby_offices: { latitude: 32.7266, longitude: 74.8570 },
   jpdcl_smart_report: { report: "voltage", from: recent, to: today, end: 5 },
   jpdcl_read: { endpoint: "main_complaint_types" },
 };

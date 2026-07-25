@@ -12,7 +12,7 @@ Add this URL to any MCP client that supports Streamable HTTP and OAuth:
 https://jpdcl.gododo.in/mcp
 ```
 
-No API key, password flag, custom header, or environment variable is needed. Your MCP client opens the account-linking page, where you sign in to JPDCL directly. The hosted service exposes all 26 read-only tools through the verified Azure/WARP path, including account records, the complete smart-meter dashboard, intervals, technical profile, reports, billing, alerts, preferences, support, notifications, forecasts, and a guarded catalog reader. It does not expose login, payment initiation, complaint creation, preference changes, or any other account-changing action.
+No API key, password flag, custom header, or environment variable is needed. Your MCP client opens the account-linking page, where you sign in to JPDCL directly. The hosted service exposes 24 read-only tools through the verified Azure/WARP path, including account records, the complete smart-meter dashboard, intervals, technical profile, reports, alerts, preferences, support, notifications, forecasts, and a guarded catalog reader. It does not expose login, payment initiation, complaint creation, preference changes, or any other account-changing action.
 
 The only public hosted URL is `https://jpdcl.gododo.in/mcp`; the Cloudflare `workers.dev` and preview hostnames are disabled.
 
@@ -48,7 +48,7 @@ Or start it directly:
 npx -y jpdcl
 ```
 
-On first use, ask the client to call `jpdcl_auth_login`. The local MCP saves its session with private file permissions and automatically refreshes the JPDCL and consumer-scoped Genus sessions. It exposes all 29 tools, including the broader developer and explicitly guarded mutation tools.
+On first use, ask the client to call `jpdcl_auth_login`. The local MCP saves its session with private file permissions and automatically refreshes the JPDCL and consumer-scoped Genus sessions. It exposes 27 tools, including the broader developer and explicitly guarded mutation tools.
 
 You can also sign in and use the CLI directly:
 

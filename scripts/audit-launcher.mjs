@@ -19,7 +19,7 @@ const client = new Client({ name: "jpdcl-launcher-audit", version: "1.0.0" });
 try {
   await client.connect(transport);
   const tools = await client.listTools();
-  if (client.getServerVersion()?.name !== "JPDCL Smart Meter" || tools.tools.length !== 29) {
+  if (client.getServerVersion()?.name !== "JPDCL Smart Meter" || tools.tools.length !== 27) {
     throw new Error("jpdcl MCP dispatch returned unexpected server metadata");
   }
   process.stdout.write(`${JSON.stringify({ status: "ok", command: "jpdcl", cli: true, mcp: true, toolCount: tools.tools.length })}\n`);
