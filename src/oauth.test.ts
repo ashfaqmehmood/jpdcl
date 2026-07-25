@@ -150,6 +150,144 @@ describe("OAuth account linking", () => {
     }), store, encryptionKey), undefined);
   });
 
+  it("accepts authorization requests when resource is omitted", async () => {
+    const store = new MemoryOAuthStore();
+    const registration = await route(new Request(`${origin}/oauth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ client_name: "Perplexity", redirect_uris: [redirectUri] }),
+    }), store);
+    const client = await registration.json() as { client_id: string };
+    const authorize = new URL(`${origin}/oauth/authorize`);
+    authorize.search = new URLSearchParams({
+      response_type: "code",
+      client_id: client.client_id,
+      redirect_uri: redirectUri,
+      scope: "jpdcl:read",
+      code_challenge: await pkceChallenge(verifier),
+      code_challenge_method: "S256",
+    }).toString();
+
+    const linkPage = await route(new Request(authorize), store);
+    assert.equal(linkPage.status, 200);
+  });
+
+  it("accepts token exchange requests when resource is omitted", async () => {
+    const store = new MemoryOAuthStore();
+    const registration = await route(new Request(`${origin}/oauth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ client_name: "Perplexity", redirect_uris: [redirectUri] }),
+    }), store);
+    const client = await registration.json() as { client_id: string };
+    const authorize = new URL(`${origin}/oauth/authorize`);
+    authorize.search = new URLSearchParams({
+      response_type: "code",
+      client_id: client.client_id,
+      redirect_uri: redirectUri,
+      scope: "jpdcl:read",
+      resource: `${origin}/mcp`,
+      code_challenge: await pkceChallenge(verifier),
+      code_challenge_method: "S256",
+    }).toString();
+    const linkPage = await route(new Request(authorize), store);
+    const transactionId = /name="transaction_id" value="([^"]+)"/.exec(await linkPage.text())?.[1];
+    assert.ok(transactionId);
+
+    const linked = await route(new Request(`${origin}/oauth/authorize`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        transaction_id: transactionId,
+        login_id: "demo-user",
+        password: "demo-password",
+        consent: "approved",
+      }),
+    }), store);
+    const callback = new URL(linked.headers.get("location")!);
+    const code = callback.searchParams.get("code");
+    assert.ok(code);
+
+    const tokenResponse = await route(new Request(`${origin}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: client.client_id,
+        redirect_uri: redirectUri,
+        code,
+        code_verifier: verifier,
+      }),
+    }), store);
+    assert.equal(tokenResponse.status, 200);
+  });
+
+  it("rejects explicit wrong resource values", async () => {
+    const store = new MemoryOAuthStore();
+    const registration = await route(new Request(`${origin}/oauth/register`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ client_name: "Perplexity", redirect_uris: [redirectUri] }),
+    }), store);
+    const client = await registration.json() as { client_id: string };
+    const badAuthorize = new URL(`${origin}/oauth/authorize`);
+    badAuthorize.search = new URLSearchParams({
+      response_type: "code",
+      client_id: client.client_id,
+      redirect_uri: redirectUri,
+      scope: "jpdcl:read",
+      resource: `${origin}/not-mcp`,
+      code_challenge: await pkceChallenge(verifier),
+      code_challenge_method: "S256",
+    }).toString();
+    const badAuthorizeResponse = await route(new Request(badAuthorize), store);
+    assert.equal(badAuthorizeResponse.status, 400);
+    assert.equal((await badAuthorizeResponse.json() as { error: string }).error, "invalid_target");
+
+    const goodAuthorize = new URL(`${origin}/oauth/authorize`);
+    goodAuthorize.search = new URLSearchParams({
+      response_type: "code",
+      client_id: client.client_id,
+      redirect_uri: redirectUri,
+      scope: "jpdcl:read",
+      resource: `${origin}/mcp`,
+      code_challenge: await pkceChallenge(verifier),
+      code_challenge_method: "S256",
+    }).toString();
+    const linkPage = await route(new Request(goodAuthorize), store);
+    const transactionId = /name="transaction_id" value="([^"]+)"/.exec(await linkPage.text())?.[1];
+    assert.ok(transactionId);
+
+    const linked = await route(new Request(`${origin}/oauth/authorize`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        transaction_id: transactionId,
+        login_id: "demo-user",
+        password: "demo-password",
+        consent: "approved",
+      }),
+    }), store);
+    const callback = new URL(linked.headers.get("location")!);
+    const code = callback.searchParams.get("code");
+    assert.ok(code);
+
+    const badTokenResponse = await route(new Request(`${origin}/oauth/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: client.client_id,
+        redirect_uri: redirectUri,
+        resource: `${origin}/not-mcp`,
+        code,
+        code_verifier: verifier,
+      }),
+    }), store);
+    assert.equal(badTokenResponse.status, 400);
+    assert.equal((await badTokenResponse.json() as { error: string }).error, "invalid_request");
+  });
+
   it("allows only the registered loopback callback origin in the linking-page CSP", async () => {
     const store = new MemoryOAuthStore();
     const loopbackRedirect = "http://127.0.0.1:19876/mcp/oauth/callback";

@@ -192,7 +192,8 @@ async function beginAuthorization(request: Request, store: OAuthStore, expectedR
   const client = await store.get<OAuthClient>(`client:${clientId}`);
   const redirectUri = url.searchParams.get("redirect_uri") ?? "";
   const codeChallenge = url.searchParams.get("code_challenge") ?? "";
-  const requestedResource = url.searchParams.get("resource") ?? "";
+  const resourceParam = url.searchParams.get("resource");
+  const requestedResource = resourceParam?.trim() ? resourceParam : expectedResource;
   const scope = normalizeScope(url.searchParams.get("scope") ?? OAUTH_SCOPE);
   if (!client) return oauthError("unauthorized_client", "Unknown OAuth client");
   if (url.searchParams.get("response_type") !== "code") return oauthError("unsupported_response_type", "Only authorization code is supported");
@@ -200,7 +201,9 @@ async function beginAuthorization(request: Request, store: OAuthStore, expectedR
   if (url.searchParams.get("code_challenge_method") !== "S256" || !/^[A-Za-z0-9_-]{43,128}$/.test(codeChallenge)) {
     return oauthError("invalid_request", "PKCE with S256 is required");
   }
-  if (requestedResource !== expectedResource) return oauthError("invalid_target", "The resource parameter must identify this MCP server");
+  if (resourceParam?.trim() && requestedResource !== expectedResource) {
+    return oauthError("invalid_target", "The resource parameter must identify this MCP server");
+  }
   if (!scope || !hasOnlySupportedScopes(scope)) return oauthError("invalid_scope", `Only ${OAUTH_SCOPE} is supported`);
 
   const transactionId = randomValue(24);
@@ -294,8 +297,11 @@ async function exchangeToken(
   }
   const grantType = form.get("grant_type");
   const clientId = form.get("client_id") ?? "";
-  const requestedResource = form.get("resource") ?? "";
-  if (!clientId || requestedResource !== expectedResource) return oauthError("invalid_request", "Valid client_id and resource are required");
+  const resourceParam = form.get("resource");
+  const requestedResource = resourceParam?.trim() ? resourceParam : expectedResource;
+  if (!clientId || (resourceParam?.trim() && requestedResource !== expectedResource)) {
+    return oauthError("invalid_request", "Valid client_id is required and resource must identify this MCP server");
+  }
 
   if (grantType === "authorization_code") {
     const rawCode = form.get("code") ?? "";
