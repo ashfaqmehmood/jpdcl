@@ -62,7 +62,7 @@ npx -y jpdcl tariff estimate
 npx -y jpdcl ledger summary
 ```
 
-Use `npx -y jpdcl --help` for the complete command tree. CLI output is JSON.
+Use `npx -y jpdcl --help` for the complete command tree. CLI output is JSON. Add `--compact` before the command when you need one-line JSON for scripts, for example `npx -y jpdcl --compact snapshot`.
 
 ## What it provides
 
